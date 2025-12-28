@@ -9,3 +9,5 @@ httpx>=0.24.0
 passlib[bcrypt]
 python-jose[cryptography]
 PyMySQL
+python-multipart
+bcrypt==4.0.1
