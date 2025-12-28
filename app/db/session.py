@@ -1,0 +1,25 @@
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from app.core.config import settings
+
+engine = create_engine(settings.DB_URL, future=True)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+def init_db():
+    # attempt to import models to ensure metadata is registered
+    try:
+        from app.models import Base
+
+        Base.metadata.create_all(bind=engine)
+    except Exception:
+        # if no models defined yet, ignore
+        pass
