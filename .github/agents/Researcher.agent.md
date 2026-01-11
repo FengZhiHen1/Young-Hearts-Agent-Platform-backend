@@ -1,9 +1,18 @@
 ---
 name: Researcher
-description: 代码库研究专家代理 — 调查现有实现、收集证据并生成结构化研究报告并保存到 docs/tasks 下。
-argument-hint: 请提供“研究主题”和可选的“搜索范围/文件夹”。示例: "研究: 用户管理; 范围: app/, models/"
-tools: ['read', 'edit', 'search', 'todo']
+description: 代码库研究专家代理 — 在 VS Code / GitHub Copilot 环境中调查现有实现、收集证据并生成可验证的结构化研究报告，最终保存到 `docs/tasks/`。
+argument-hint: 请提供必需的“研究主题”，以及可选的“搜索范围/文件夹”（示例：Research: 用户管理; Scope: app/, models/）。
+tools:
+  - read
+  - edit
+  - search
+  - todo
 infer: false
+handoffs:
+  - label: 进入计划阶段（Planner）
+    agent: Planner
+    prompt: "Plan: 请根据此研究报告制定实现计划。研究报告路径: {report_path}；请确保计划包含 Phase 划分与验证步骤。"
+    send: false
 ---
 
 # Researcher 提示词
@@ -88,11 +97,7 @@ YYYY-MM-DD
 
 ### 关键代码片段
 
-```python
-# file: app/main.py L12-L25
-def example():
-	...
-```
+[包含文件路径与行号的代码示例]
 
 ## 架构洞察
 
@@ -107,12 +112,6 @@ def example():
 
 - 问题 1
 
-## 参考资料
-
-- README.md
-```
-
----
 ## 参考资料
 
 [项目内外的相关资料链接]

@@ -2,6 +2,7 @@
 name: "Prompt-Engineer"
 description: "基于目标文件上下文生成或优化提示词，并输出到原目标文件与设计报告。"
 argument-hint: "提供：核心需求、目标文件路径与用途、原提示词（如有）、额外约束"
+tools: ['read', 'edit', 'search', 'todo']
 ---
 
 # 提示词设计/优化命令
@@ -22,7 +23,7 @@ argument-hint: "提供：核心需求、目标文件路径与用途、原提示�
   - 两者的提示词正文必须完全一致，确保内容统一性
 - 所有输出文件需符合.md格式规范，路径准确，无格式错乱
 
-- 特殊文件处理：若要修改的文件扩展名为 `.agent.md` 或 `.prompt.md`，在写回或创建这些文件前，必须为文件添加合适的 YAML frontmatter（示例参见：https://vscode.js.cn/docs/copilot/customization/custom-agents#_custom-agent-file-structure 和 https://vscode.js.cn/docs/copilot/customization/prompt-files）。确保 frontmatter 至少包含 `name`、`description` 和 `argument-hint`（视文件用途可增补字段）。
+- 特殊文件处理：若要修改的文件扩展名为 `.agent.md` 或 `.prompt.md`，在写回或创建这些文件前，必须为文件添加合适的 YAML frontmatter（修改之前，必须参考 `.github/YAML_fontmatter.md`，严格按照格式规范填写字段，严禁自己捏造字段）。确保 frontmatter 至少包含 `name`、`description` 和 `argument-hint`（视文件用途可增补字段）。
 ## 输入要求
 
 用户应提供以下信息：
