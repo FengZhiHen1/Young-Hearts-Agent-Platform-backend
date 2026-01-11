@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, cast
 
 from jose import jwt, JWTError
 from passlib.context import CryptContext
@@ -35,7 +35,7 @@ def authenticate_user(db: Session, username: str, password: str):
     user = get_user_by_username(db, username)
     if not user:
         return None
-    if not verify_password(password, user.password_hash):
+    if not verify_password(password, cast(str, user.password_hash)):
         return None
     return user
 
@@ -48,8 +48,8 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     )
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        username: str = payload.get("sub")
-        user_id: int = payload.get("user_id")
+        username: Optional[str] = payload.get("sub")
+        user_id: Optional[int] = payload.get("user_id")
         if username is None or user_id is None:
             raise credentials_exception
     except JWTError:
