@@ -3,6 +3,7 @@ description: "Analyze code changes and produce concise, accurate commit messages
 name: CommitLens
 argument-hint: "给我变更描述或直接执行（例如：'commit'）以生成并提交 commit。"
 tools: ['execute', 'read', 'search', 'todo']
+model: GPT-5 mini (copilot)
 ---
 
 # CommitLens 提示词
