@@ -1,0 +1,211 @@
+# 数据模型与 API 设计文档
+
+## 1. 核心数据模型设计 (Data Models)
+
+本部分定义核心实体及其属性，采用类 SQL/NoSQL 混合描述。
+
+### 1.1 用户与角色体系
+
+#### `User` (基础用户表)
+系统所有用户的基表。
+- `id`: Include (PK)
+- `username`: String (Unique)
+- `email`: String (Unique)
+- `password_hash`: String
+- `nickname`: String
+- `avatar`: String (URL)
+- `roles`: Array<String> ['family', 'volunteer', 'expert', 'admin', 'maintainer']
+- `status`: String ['active', 'banned', 'pending_review']
+- `created_at`: DateTime
+
+#### `VolunteerProfile` (志愿者扩展表)
+- `user_id`: Integer (FK -> User.id)
+- `full_name`: String (真实姓名, 仅管理员可见)
+- `phone`: String (手机号, 仅管理员可见)
+- `public_email`: String (公开邮箱, 可选) 
+- `is_public_visible`: Boolean (是否在志愿者墙展示)
+- `service_hours`: Float (累计服务时长)
+- `skills`: Array<String> (擅长领域)
+- `status`: String ['pending', 'approved', 'rejected'] (注册审核状态)
+- `work_status`: String ['online', 'busy', 'offline'] (服务状态)
+
+
+
+#### `Session`（会话表）
+用于持久化多端会话信息，支持统一身份校验与多端登录。
+
+| 字段名        | 类型      | 说明               |
+|--------------|----------|--------------------|
+| session_id   | String   | 会话唯一标识       |
+| user_id      | Integer  | 关联用户ID         |
+| created_at   | DateTime | 会话创建时间       |
+| expired_at   | DateTime | 会话过期时间       |
+| user_agent   | String   | 客户端信息         |
+| ip           | String   | 登录 IP 地址       |
+
+---
+
+### 1.2 知识库体系 (RAG Core)
+
+#### `KnowledgeItem` (知识条目)
+- `id`: Integer (PK)
+- `title`: String
+- `summary`: String (摘要)
+- `content`: Text (Markdown 原始内容)
+- `tags`: Array<String>
+- `category`: String (如: "情绪干预", "生活自理")
+- `author_id`: Integer (FK -> User.id, 贡献者)
+- `status`: String ['draft', 'pending_review', 'published', 'rejected', 'archived']
+- `review_comments`: String (审核意见)
+- `reviewed_by`: Integer (FK -> User.id, 审核专家)
+- `reviewed_at`: DateTime
+- `created_at`: DateTime
+- `updated_at`: DateTime
+
+#### `KnowledgeChunk` (知识切片 - 向量化单元)
+- `id`: Integer (PK)
+- `item_id`: Integer (FK -> KnowledgeItem.id)
+- `content_chunk`: String (被切分的文本段)
+- `vector_id`: String (向量数据库中的 ID)
+- `sequence`: Integer (在原文中的顺序)
+
+### 1.3 咨询与工单体系
+
+#### `ConsultationSession` (RAG 智能对话会话)
+- `id`: Integer (PK)
+- `user_id`: Integer (FK -> User.id)
+- `topic`: String (自动生成的会话摘要)
+- `created_at`: DateTime
+- `is_archived`: Boolean
+
+#### `ConsultationMessage` (对话消息)
+- `id`: Integer (PK)
+- `session_id`: Integer (FK -> ConsultationSession.id)
+- `role`: String ['user', 'ai', 'system']
+- `content`: Text (markdown 格式)
+- `sources`: Array<Object> (RAG 引用来源: [{title, id, score}])
+- `created_at`: DateTime
+
+
+#### `Ticket` (人工咨询工单)
+- `id`: Integer (PK)
+- `title`: String
+- `description`: Text
+- `category`: String
+- `priority`: String ['low', 'medium', 'high']
+- `status`: String ['open', 'claimed', 'processing', 'resolved', 'closed']
+- `created_by`: Integer (FK -> User.id, 家属)
+- `assigned_to`: Integer (FK -> User.id, 志愿者/专家)
+- `assigned_by`: Integer (FK -> User.id, 管理员指派，可选)
+- `created_at`: DateTime
+- `resolved_at`: DateTime
+
+#### `TicketComment` (工单回复记录)
+- `id`: Integer (PK)
+- `ticket_id`: Integer (FK -> Ticket.id)
+- `user_id`: Integer
+- `content`: Text
+- `is_internal`: Boolean (是否仅内部可见)
+- `created_at`: DateTime
+
+### 1.4 志愿者活动体系
+
+#### `Shift` (线下排班)
+- `id`: Integer (PK)
+- `title`: String
+- `description`: String
+- `location`: String
+- `start_time`: DateTime
+- `end_time`: DateTime
+- `max_participants`: Integer
+- `current_participants`: Integer
+- `status`: String ['open', 'full', 'cancelled', 'completed']
+- `created_by`: Integer (FK -> User.id, 管理员)
+
+#### `ShiftApplication` (排班申请)
+- `id`: Integer (PK)
+- `shift_id`: Integer (FK -> Shift.id)
+- `volunteer_id`: Integer (FK -> User.id)
+- `status`: String ['pending', 'approved', 'rejected', 'cancelled']
+- `attendance_status`: String ['pending', 'present', 'absent', 'late'] (考勤状态)
+- `applied_at`: DateTime
+
+---
+
+## 2. API 接口定义 (RESTful)
+
+### 2.1 认证与基础 (Auth)
+
+| Method | Endpoint | Description | Auth Required |
+|---|---|---|---|
+| POST | `/api/auth/login` | 用户登录 | No |
+| POST | `/api/auth/logout` | 用户登出 | Yes |
+| POST | `/api/auth/register` | 用户注册 (基础信息) | No |
+| GET | `/api/auth/me` | 获取当前登录用户信息 (含 Roles & Profile概要) | Yes |
+| POST | `/api/auth/refresh-token` | 刷新 Token | No |
+
+### 2.2 用户管理 (Users & Profiles)
+
+| Method | Endpoint | Description | Roles |
+|---|---|---|---|
+| GET | `/api/users/profile` | 获取当前用户详细档案 | Any |
+| PUT | `/api/users/profile` | 更新当前用户详细档案 (含 Volunteer/Expert 字段) | Any |
+| POST | `/api/users/apply-role` | 申请成为志愿者或专家 (上传资质) | Family |
+| GET | `/api/admin/users` | (Admin) 用户列表，支持筛选 | Admin |
+| POST | `/api/admin/users/:id/verify` | (Admin) 审核用户注册/角色申请 | Admin |
+| GET | `/api/public/experts` | 获取公开专家列表 (专家墙) | Any |
+| GET | `/api/public/volunteers` | 获取公开志愿者列表 (志愿者墙) | Any |
+
+### 2.3 知识库 (Knowledge)
+
+| Method | Endpoint | Description | Roles |
+|---|---|---|---|
+| GET | `/api/knowledge/items` | 搜索/列出已发布知识条目 | Any |
+| GET | `/api/knowledge/items/:id` | 获取详情 | Any |
+| POST | `/api/knowledge/items` | 提交知识条目 (草稿/待审核) | Volunteer, Expert |
+| PUT | `/api/knowledge/items/:id` | 编辑条目 | Author, Expert |
+| GET | `/api/knowledge/audit-list` | 获取待审核列表 | Expert |
+| POST | `/api/knowledge/items/:id/audit` | 审核条目 (Pass/Reject + Comment) | Expert |
+| POST | `/api/knowledge/upload` | 上传文件进行自动切片 | Volunteer, Expert |
+
+### 2.4 智能咨询 (RAG Consultation)
+
+| Method | Endpoint | Description | Roles |
+|---|---|---|---|
+| POST | `/api/consult/chat` | 发送消息并获取 AI 回复 (Stream) | Any |
+| POST | `/api/consult/sessions` | 创建新会话 | Any |
+| GET | `/api/consult/sessions` | 获取历史会话列表 | Any |
+| GET | `/api/consult/sessions/:id` | 获取会话消息详情 | Any |
+
+### 2.5 工单系统 (Tickets)
+
+| Method | Endpoint | Description | Roles |
+|---|---|---|---|
+| POST | `/api/tickets` | 创建咨询工单 | Family |
+| GET | `/api/tickets` | 获取工单列表 (Family看自己的, Volunteer/Expert看池子) | Any |
+| GET | `/api/tickets/:id` | 工单详情 | Any |
+| POST | `/api/tickets/:id/claim` | 认领工单 | Volunteer, Expert |
+| POST | `/api/tickets/:id/reply` | 回复工单 | Volunteer, Expert |
+| PATCH | `/api/tickets/:id/status` | 变更状态 (Close/Resolve) | Volunteer, Expert, Admin |
+
+### 2.6 志愿者活动 (Shifts)
+
+| Method | Endpoint | Description | Roles |
+|---|---|---|---|
+| GET | `/api/shifts` | 获取排班列表 | Volunteer, Admin |
+| GET | `/api/shifts/:id` | 排班详情 | Volunteer, Admin |
+| POST | `/api/shifts` | 创建排班 | Admin |
+| POST | `/api/shifts/:id/apply` | 报名排班 | Volunteer |
+| PATCH | `/api/shifts/applications/:id` | 审核报名/记录考勤 | Admin |
+
+---
+
+
+## 3. 设计原则与注意事项
+
+1.  **鉴权机制**：所有非 `/public` 和 `/auth/login|register` 接口均需验证 JWT Token (Cookie 或 Header)。
+2.  **Mock 策略**：前端开发期间，建议使用 `Mock.js` 或拦截器模拟上述 API 响应，确保字段名与本设计一致。
+3.  **分页标准**：列表接口统一支持 query params: `page=1&limit=20`，返回结构 `{ items: [], total: 100 }`。
+4.  **错误处理**：HTTP 状态码优先（200 OK, 400 Bad Request, 401 Unauthorized, 403 Forbidden, 404 Not Found, 500 Server Error）。
+5.  **时间格式**：所有时间字段推荐使用 ISO 8601 格式 (`YYYY-MM-DDTHH:mm:ssZ`)。
+6.  **安全性**：敏感字段（这是 `phone`, `real_name`）在非 Admin 接口中必须脱敏或剔除。
