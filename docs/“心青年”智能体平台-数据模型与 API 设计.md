@@ -10,6 +10,7 @@
 系统所有用户的基表。
 - `id`: Include (PK)
 - `username`: String (Unique)
+- `gender`: String ['male', 'female', 'hidden']
 - `email`: String (Unique)
 - `password_hash`: String
 - `nickname`: String

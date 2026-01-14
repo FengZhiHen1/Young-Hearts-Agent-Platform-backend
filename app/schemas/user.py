@@ -13,6 +13,7 @@ class UserLogin(BaseModel):
 class UserBase(BaseModel):
     username: Optional[str]
     email: Optional[str]
+    gender: Optional[str] = "hidden"  # ['male', 'female', 'hidden']
     nickname: Optional[str] = None
     avatar: Optional[str] = None
     roles: Optional[list[str]] = []
@@ -26,6 +27,7 @@ class UserCreate(BaseModel):
     username: str
     password: str
     email: Optional[str] = None
+    gender: Optional[str] = "hidden"
     nickname: Optional[str] = None
     avatar: Optional[str] = None
     roles: Optional[list[str]] = []
@@ -65,6 +67,7 @@ class SessionOut(SessionBase):
 class UserUpdate(BaseModel):
     username: Optional[str] = None
     email: Optional[str] = None
+    gender: Optional[str] = None
     password: Optional[str] = None
     full_name: Optional[str] = None
     is_active: Optional[bool] = None

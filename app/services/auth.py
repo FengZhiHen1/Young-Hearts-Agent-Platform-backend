@@ -4,6 +4,7 @@ from typing import cast
 from passlib.context import CryptContext
 
 from fastapi import Depends, HTTPException, status, Request
+from functools import wraps
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
@@ -35,6 +36,23 @@ def authenticate_user(db: Session, username: str, password: str):
         return None
     return user
 
+
+# 权限装饰器：校验 current_user.roles
+def require_roles(roles):
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            # FastAPI 路由依赖注入 current_user
+            current_user = kwargs.get('current_user')
+            if not current_user or not hasattr(current_user, 'roles'):
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="权限不足")
+            user_roles = set(current_user.roles or [])
+            required_roles = set(roles)
+            if not user_roles & required_roles:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="权限不足")
+            return await func(*args, **kwargs)
+        return wrapper
+    return decorator
 
 # 登录：生成 session_id 并写入 session 表
 async def login(user_in, request: Request):

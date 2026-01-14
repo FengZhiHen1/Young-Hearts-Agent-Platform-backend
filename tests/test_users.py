@@ -16,11 +16,13 @@ def test_register_login_and_get_me():
         "username": username,
         "password": password,
         "email": "test@example.com",
-        "full_name": "Test User",
+        "gender": "male",
+        "nickname": "Test User",
     })
     assert r.status_code == 201, r.text
     data = r.json()
     assert data["username"] == username
+    assert data["gender"] == "male"
 
     # login using form (OAuth2 password flow)
     r2 = client.post("/auth/token", data={"username": username, "password": password})
@@ -35,6 +37,7 @@ def test_register_login_and_get_me():
     assert r3.status_code == 200, r3.text
     me = r3.json()
     assert me["username"] == username
+    assert me["gender"] == "male"
 
     # cleanup - delete user
     r4 = client.delete("/users/me", headers={"Authorization": f"Bearer {access_token}"})

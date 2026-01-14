@@ -12,8 +12,12 @@ def create_user(db: Session, user_in: UserCreate):
     user = User(
         username=user_in.username,
         email=user_in.email,
+        gender=user_in.gender or "hidden",
         password_hash=get_password_hash(user_in.password),
-        full_name=user_in.full_name,
+        nickname=user_in.nickname,
+        avatar=user_in.avatar,
+        roles=str(user_in.roles) if user_in.roles else '[]',
+        status=user_in.status or "active",
     )
     db.add(user)
     try:

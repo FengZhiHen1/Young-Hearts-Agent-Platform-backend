@@ -11,6 +11,7 @@ class User(Base):
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     username = Column(String(150), nullable=False, unique=True)
     email = Column(String(320), unique=True)
+    gender = Column(String(16), default="hidden")  # ['male', 'female', 'hidden']
     password_hash = Column(String(255), nullable=False)
     nickname = Column(String(255))
     avatar = Column(String(512))
