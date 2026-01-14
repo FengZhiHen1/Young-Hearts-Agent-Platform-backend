@@ -29,6 +29,17 @@
 - `status`: String ['pending', 'approved', 'rejected'] (注册审核状态)
 - `work_status`: String ['online', 'busy', 'offline'] (服务状态)
 
+#### `ExpertProfile` (专家扩展表)
+- `user_id`: Integer (FK -> User.id)
+- `full_name`: String
+- `title`: String (职称)
+- `organization`: String (所属机构)
+- `qualifications`: Array<String> (资质证书URL)
+- `specialties`: Array<String> (擅长领域标签)
+- `phone`: String (仅管理员可见)
+- `public_email`: String
+- `is_public_visible`: Boolean
+- `status`: String ['pending', 'approved', 'rejected']
 
 
 #### `Session`（会话表）

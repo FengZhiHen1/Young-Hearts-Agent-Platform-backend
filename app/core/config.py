@@ -11,6 +11,12 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
+    # session/cookie 策略
+    SESSION_COOKIE_NAME: str = "session_id"
+    SESSION_COOKIE_HTTPONLY: bool = True
+    SESSION_COOKIE_SECURE: bool = False
+    SESSION_EXPIRE_MINUTES: int = 60 * 24  # 默认 24 小时
+
     class Config:
         env_file = ".env"
 
