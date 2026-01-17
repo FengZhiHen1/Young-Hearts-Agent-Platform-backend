@@ -74,7 +74,7 @@ class VolunteerProfileOut(VolunteerProfileCreate):
     work_status: Optional[str] = "offline"
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class ExpertProfileOut(ExpertProfileCreate):
@@ -82,7 +82,7 @@ class ExpertProfileOut(ExpertProfileCreate):
     status: Optional[str] = "pending"
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class UserOut(UserBase):
@@ -91,7 +91,7 @@ class UserOut(UserBase):
     expert_profile: Optional[ExpertProfileOut] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 # Session Pydantic 模型
@@ -113,7 +113,7 @@ class SessionCreate(BaseModel):
 
 class SessionOut(SessionBase):
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class UserUpdate(BaseModel):
