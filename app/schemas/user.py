@@ -1,6 +1,7 @@
 from typing import Optional, List, Literal, Union
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, model_validator, field_validator
 from datetime import datetime
+import json
 
 # 用户角色类型
 UserRole = Literal["family", "volunteer", "expert", "admin", "maintainer"]
@@ -92,6 +93,18 @@ class UserOut(UserBase):
 
     class Config:
         from_attributes = True
+
+    @field_validator("roles", mode="before")
+    @classmethod
+    def parse_roles(cls, v):
+        """将字符串格式的roles解析为列表，解析失败返回空列表"""
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except json.JSONDecodeError:  # 精准捕获JSON解析错误
+                return []
+        # 非字符串类型直接返回（如已是列表）
+        return v
 
 
 # Session Pydantic 模型

@@ -14,8 +14,8 @@ from app.db.session import get_db
 from app.models.user import Session as SessionModel, User
 import secrets
 
-# 初始化密码加密上下文，指定用 bcrypt 算法，自动处理过时的加密方式
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# 初始化密码加密上下文，指定用 argon2 算法，自动处理过时的加密方式
+pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 # OAuth2 密码模式，指定 token URL（登录接口）
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 
@@ -75,7 +75,11 @@ async def login(user_in, request: Request):
     )
     db.add(session)
     db.commit()
-    return user, session_id
+    # 关键：刷新 user，转换为 Pydantic 模型，防止 DetachedInstanceError
+    db.refresh(user)
+    from app.schemas.user import UserOut
+    user_out = UserOut.model_validate(user)
+    return user_out, session_id
 
 # 登出：清理 session 表记录，支持 Cookie/Header
 async def logout(request: Request):
@@ -127,7 +131,12 @@ def get_current_user_from_context(request: Request, db: Session = Depends(get_db
     expired_at = getattr(session, "expired_at", None)
     if expired_at is not None and isinstance(expired_at, datetime):
         now = datetime.now(timezone.utc)
-        if expired_at < now:
+        # 将 expired_at 转为有时区（UTC）再比较
+        if expired_at.tzinfo is None:
+            expired_at_utc = expired_at.replace(tzinfo=timezone.utc)
+        else:
+            expired_at_utc = expired_at.astimezone(timezone.utc)
+        if expired_at_utc < now:
             raise HTTPException(status_code=401, detail="Session expired or invalid")
     user = db.query(User).filter(User.id == session.user_id).first()
     if not user:

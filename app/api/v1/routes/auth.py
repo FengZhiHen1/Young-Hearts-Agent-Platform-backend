@@ -133,6 +133,14 @@ async def register(user_in: UserRegisterRequest):
     from app.schemas.user import UserOut, VolunteerProfileOut, ExpertProfileOut
     # 用 dict 构造，避免 from_orm
     user_dict = {**user.__dict__}
+    import json
+    # 兼容 roles 字段为 JSON 字符串的情况
+    roles = user_dict.get("roles")
+    if isinstance(roles, str):
+        try:
+            user_dict["roles"] = json.loads(roles)
+        except Exception:
+            user_dict["roles"] = []
     if volunteer_profile:
         user_dict["volunteer_profile"] = VolunteerProfileOut(**volunteer_profile.__dict__)
     if expert_profile:
