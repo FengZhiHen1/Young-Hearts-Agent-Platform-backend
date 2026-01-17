@@ -146,8 +146,24 @@ async def register(user_in: UserRegisterRequest):
         except Exception:
             user_dict["roles"] = []
     if volunteer_profile:
-        user_dict["volunteer_profile"] = VolunteerProfileOut(**volunteer_profile.__dict__)
+        # 修正 skills 字段类型为 list
+        volunteer_profile_dict = dict(volunteer_profile.__dict__)
+        if isinstance(volunteer_profile_dict.get("skills"), str):
+            import json
+            try:
+                volunteer_profile_dict["skills"] = json.loads(volunteer_profile_dict["skills"])
+            except Exception:
+                volunteer_profile_dict["skills"] = []
+        user_dict["volunteer_profile"] = VolunteerProfileOut(**volunteer_profile_dict)
     if expert_profile:
-        user_dict["expert_profile"] = ExpertProfileOut(**expert_profile.__dict__)
+        # 修正 skills 字段类型为 list
+        expert_profile_dict = dict(expert_profile.__dict__)
+        if isinstance(expert_profile_dict.get("skills"), str):
+            import json
+            try:
+                expert_profile_dict["skills"] = json.loads(expert_profile_dict["skills"])
+            except Exception:
+                expert_profile_dict["skills"] = []
+        user_dict["expert_profile"] = ExpertProfileOut(**expert_profile_dict)
     user_out = UserOut(**user_dict)
     return user_out

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, BigInteger, String, Boolean, DateTime, JSON
+from sqlalchemy import Column, BigInteger, String, Boolean, DateTime, JSON, ForeignKeyConstraint
 from sqlalchemy.sql import func
 from app.models import Base
 
@@ -27,7 +27,10 @@ class User(Base):
 class VolunteerProfile(Base):
     __tablename__ = "volunteer_profiles"
 
-    user_id = Column(BigInteger, primary_key=True)
+    user_id = Column(BigInteger, primary_key=True, nullable=False, comment="外键，关联 users.id")
+    __table_args__ = (
+        ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
+    )
     full_name = Column(String(255))
     phone = Column(String(32))
     public_email = Column(String(320))
@@ -42,7 +45,10 @@ class VolunteerProfile(Base):
 class ExpertProfile(Base):
     __tablename__ = "expert_profiles"
 
-    user_id = Column(BigInteger, primary_key=True)
+    user_id = Column(BigInteger, primary_key=True, nullable=False, comment="外键，关联 users.id")
+    __table_args__ = (
+        ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
+    )
     full_name = Column(String(255))
     phone = Column(String(32))
     public_email = Column(String(320))
