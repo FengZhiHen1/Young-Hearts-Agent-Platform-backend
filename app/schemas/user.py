@@ -19,7 +19,7 @@ class UserBase(BaseModel):
     gender: Optional[str] = "hidden"  # ['male', 'female', 'hidden']
     nickname: Optional[str] = None
     avatar: Optional[str] = None
-    roles: Optional[List[UserRole]] = []
+    roles: List[UserRole] = []  # 只接受/输出 List[str]，由 ORM 层保证为 JSON 字符串
     status: Optional[str] = "active"
     is_active: Optional[bool] = True
     is_superuser: Optional[bool] = False
@@ -97,13 +97,9 @@ class UserOut(UserBase):
     @field_validator("roles", mode="before")
     @classmethod
     def parse_roles(cls, v):
-        """将字符串格式的roles解析为列表，解析失败返回空列表"""
+        """只做 json.loads，保证 roles 为 List[str]"""
         if isinstance(v, str):
-            try:
-                return json.loads(v)
-            except json.JSONDecodeError:  # 精准捕获JSON解析错误
-                return []
-        # 非字符串类型直接返回（如已是列表）
+            return json.loads(v)
         return v
 
 

@@ -15,12 +15,16 @@ router = APIRouter()
 
 # 仅允许登录用户访问，示例：普通用户和志愿者均可
 @router.get("/me", response_model=UserOut)
-@require_roles(["user", "volunteer", "expert", "admin"])
+@require_roles(["user", "family", "volunteer", "expert", "admin"])
 async def read_users_me(current_user=Depends(get_current_user)):
     # 敏感字段按角色脱敏示例
-    user_dict = current_user.dict() if hasattr(current_user, 'dict') else dict(current_user)
-    # 性别字段直接返回，无需脱敏
-    # 假设手机号为敏感字段，仅 admin/专家可见
+    if hasattr(current_user, 'dict'):
+        user_dict = current_user.dict()
+    elif hasattr(current_user, '__dict__'):
+        user_dict = vars(current_user)
+    else:
+        user_dict = {}
+    # 只依赖 schema 校验，roles 必为 List[str]
     if "admin" not in current_user.roles and "expert" not in current_user.roles:
         user_dict.pop("phone", None)
     return user_dict
@@ -28,7 +32,7 @@ async def read_users_me(current_user=Depends(get_current_user)):
 
 # 仅允许本人或管理员修改
 @router.put("/me", response_model=UserOut)
-@require_roles(["user", "admin"])
+@require_roles(["user", "family", "admin"])
 async def update_me(payload: UserUpdate, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     data = payload.dict(exclude_unset=True)
     if "password" in data:
@@ -39,7 +43,7 @@ async def update_me(payload: UserUpdate, db: Session = Depends(get_db), current_
 
 # 仅允许本人或管理员注销
 @router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
-@require_roles(["user", "admin"])
+@require_roles(["user", "family", "admin"])
 async def delete_me(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     delete_user(db, current_user)
     return None

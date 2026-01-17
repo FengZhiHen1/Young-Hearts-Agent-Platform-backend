@@ -437,24 +437,17 @@
             "title": "Avatar"
           },
           "roles": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string",
-                  "enum": [
-                    "family",
-                    "volunteer",
-                    "expert",
-                    "admin",
-                    "maintainer"
-                  ]
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
+            "items": {
+              "type": "string",
+              "enum": [
+                "family",
+                "volunteer",
+                "expert",
+                "admin",
+                "maintainer"
+              ]
+            },
+            "type": "array",
             "title": "Roles",
             "default": []
           },

@@ -15,7 +15,8 @@
 - `password_hash`: String
 - `nickname`: String
 - `avatar`: String (URL)
-- `roles`: Array<String> ['family', 'volunteer', 'expert', 'admin', 'maintainer']
+- `roles`: Array<String> ['family', 'volunteer', 'expert', 'admin', 'maintainer']  
+	（JSON 字符串数组，所有 API 返回为字符串数组，数据库存储为 JSON 字符串）
 - `status`: String ['active', 'banned', 'pending_review']
 - `created_at`: DateTime
 

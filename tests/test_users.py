@@ -13,7 +13,9 @@ def register_user(username, password, roles=None):
         "gender": "male",
         "nickname": "Test User",
     }
-    if roles:
+    if roles is not None:
+        # 明确 roles 只允许 List[str]，不做类型兼容
+        assert isinstance(roles, list) and all(isinstance(r, str) for r in roles)
         payload["roles"] = roles
     r = client.post("/users/register", json=payload)
     assert r.status_code == 201, r.text
@@ -77,7 +79,10 @@ def test_role_permission_and_sensitive_field():
     username = f"roleuser_{uuid.uuid4().hex[:8]}"
     password = "testpass123"
     roles = ["user", "expert"]
-    register_user(username, password, roles=roles)
+    resp = register_user(username, password, roles=roles)
+    # 注册返回 roles 必须为 List[str]
+    assert isinstance(resp["roles"], list)
+    assert set(resp["roles"]) == set(roles)
     session_id, headers = login_user(username, password)
     # 访问需要 expert 角色的接口
     r = client.get("/protected/expert", headers=headers)
