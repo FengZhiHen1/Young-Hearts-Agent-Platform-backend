@@ -1,6 +1,6 @@
 
 from fastapi import APIRouter, Request, Response, status, HTTPException
-from app.schemas.user import UserCreate, UserLogin, UserOut
+from app.schemas.user import UserLogin, UserOut
 from app.services import auth as auth_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -17,6 +17,7 @@ async def login(user_in: UserLogin, response: Response, request: Request):
     else:
         return {"user": user, "session_id": session_id}
 
+
 # 登出接口：清理 session 表记录，清除 Cookie/Header
 @router.post("/logout")
 async def logout(request: Request, response: Response):
@@ -26,8 +27,75 @@ async def logout(request: Request, response: Response):
         response.delete_cookie(key="session_id")
     return {"msg": "logout success"}
 
-# 注册接口：字段与校验对齐 API 设计
+
+# 分角色注册接口：支持多角色、profile 创建、详细返回
+from app.services import user_service
+from app.schemas.user import UserRegisterRequest
+
 @router.post("/register", response_model=UserOut)
-async def register(user_in: UserCreate):
-    user = await auth_service.register(user_in)
-    return user
+async def register(user_in: UserRegisterRequest):
+    """
+    注册接口：支持多角色注册，自动创建 profile，事务一致性，返回详细信息。
+    管理员/维护人员注册拦截。
+    """
+    from sqlalchemy.orm import Session
+    from app.db.session import get_db
+
+    db: Session = next(get_db())
+    # 拦截管理员/维护人员注册
+    if any(role in ["admin", "maintainer"] for role in user_in.roles):
+        raise HTTPException(status_code=403, detail="管理员/维护人员仅允许后台创建")
+    try:
+        # 事务开始
+        user = user_service.create_user(db, user_in)
+        volunteer_profile = None
+        expert_profile = None
+        if "volunteer" in user_in.roles and user_in.volunteer_info is not None:
+            from app.models.user import VolunteerProfile
+            v = user_in.volunteer_info
+            volunteer_profile = VolunteerProfile(
+                user_id=user.id,
+                full_name=getattr(v, "full_name", None),
+                phone=getattr(v, "phone", None),
+                public_email=getattr(v, "public_email", None),
+                is_public_visible=getattr(v, "is_public_visible", False),
+                skills=str(getattr(v, "skills", []) or []),
+                status="pending",
+                work_status="offline"
+            )
+            db.add(volunteer_profile)
+        if "expert" in user_in.roles and user_in.expert_info is not None:
+            from app.models.user import ExpertProfile
+            e = user_in.expert_info
+            expert_profile = ExpertProfile(
+                user_id=user.id,
+                full_name=getattr(e, "full_name", None),
+                phone=getattr(e, "phone", None),
+                public_email=getattr(e, "public_email", None),
+                title=getattr(e, "title", None),
+                org=getattr(e, "org", None),
+                skills=str(getattr(e, "skills", []) or []),
+                status="pending"
+            )
+            db.add(expert_profile)
+        db.commit()
+        db.refresh(user)
+        # 查询 profile 详细信息
+        if volunteer_profile:
+            db.refresh(volunteer_profile)
+        if expert_profile:
+            db.refresh(expert_profile)
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=f"注册失败: {e}")
+    
+    # 构造返回
+    from app.schemas.user import UserOut, VolunteerProfileOut, ExpertProfileOut
+    # 用 dict 构造，避免 from_orm
+    user_dict = {**user.__dict__}
+    if volunteer_profile:
+        user_dict["volunteer_profile"] = VolunteerProfileOut(**volunteer_profile.__dict__)
+    if expert_profile:
+        user_dict["expert_profile"] = ExpertProfileOut(**expert_profile.__dict__)
+    user_out = UserOut(**user_dict)
+    return user_out

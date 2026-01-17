@@ -152,7 +152,7 @@
 |---|---|---|---|
 | POST | `/api/auth/login` | 用户登录 | No |
 | POST | `/api/auth/logout` | 用户登出 | Yes |
-| POST | `/api/auth/register` | 用户注册 (基础信息) | No |
+| POST | `/api/auth/register` | 用户注册（支持多角色与 profile 创建） | No |
 | GET | `/api/auth/me` | 获取当前登录用户信息 (含 Roles & Profile概要) | Yes |
 | POST | `/api/auth/refresh-token` | 刷新 Token | No |
 
@@ -167,6 +167,66 @@
 | POST | `/api/admin/users/:id/verify` | (Admin) 审核用户注册/角色申请 | Admin |
 | GET | `/api/public/experts` | 获取公开专家列表 (专家墙) | Any |
 | GET | `/api/public/volunteers` | 获取公开志愿者列表 (志愿者墙) | Any |
+
+#### 用户注册（多角色与 profile 支持）
+
+**请求参数示例：**
+```json
+{
+	"username": "testuser",
+	"password": "testpass123",
+	"email": "testuser@example.com",
+	"gender": "male",
+	"nickname": "昵称",
+	"roles": ["family", "volunteer", "expert"],
+	"volunteer_info": {
+		"full_name": "志愿者张三",
+		"phone": "13800000000",
+		"skills": ["陪伴", "心理疏导"],
+		"is_public_visible": true
+	},
+	"expert_info": {
+		"full_name": "专家李四",
+		"title": "心理咨询师",
+		"organization": "XX医院",
+		"qualifications": ["cert1.pdf"],
+		"specialties": ["孤独症干预"],
+		"is_public_visible": false
+	}
+}
+```
+
+**参数说明：**
+- `roles`：数组，支持 ["family", "volunteer", "expert"] 多角色注册。`admin`/`maintainer` 仅后台可创建。
+- `volunteer_info`/`expert_info`：如注册对应角色，需传 profile 字段，详见数据模型。
+
+**返回结构示例：**
+```json
+{
+	"id": 1,
+	"username": "testuser",
+	"roles": ["family", "volunteer", "expert"],
+	"status": "active",
+	"volunteer_profile": {
+		"status": "pending",
+		"full_name": "志愿者张三",
+		...
+	},
+	"expert_profile": {
+		"status": "pending",
+		"full_name": "专家李四",
+		...
+	}
+}
+```
+
+**校验规则：**
+- 注册志愿者/专家时，profile 字段必填，缺失时报 400/422。
+- 注册 admin/maintainer 角色将被拒绝（400/403）。
+
+**安全说明：**
+- profile 敏感字段（如手机号、真实姓名）仅本人和管理员可见，普通接口返回时自动脱敏。
+
 
 ### 2.3 知识库 (Knowledge)
 
@@ -221,3 +281,4 @@
 4.  **错误处理**：HTTP 状态码优先（200 OK, 400 Bad Request, 401 Unauthorized, 403 Forbidden, 404 Not Found, 500 Server Error）。
 5.  **时间格式**：所有时间字段推荐使用 ISO 8601 格式 (`YYYY-MM-DDTHH:mm:ssZ`)。
 6.  **安全性**：敏感字段（这是 `phone`, `real_name`）在非 Admin 接口中必须脱敏或剔除。
+

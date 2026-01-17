@@ -3,20 +3,11 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
 from app.db.session import get_db
-from app.schemas.user import UserCreate, UserOut, UserUpdate
-from app.services.user_service import create_user, get_user_by_username, update_user, delete_user
+from app.schemas.user import UserOut, UserUpdate
+from app.services.user_service import get_user_by_username, update_user, delete_user
 from app.services.auth import get_current_user_from_context as get_current_user, require_roles
 
 router = APIRouter(prefix="/users", tags=["users"])
-
-
-@router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
-def register_user(payload: UserCreate, db: Session = Depends(get_db)):
-    try:
-        user = create_user(db, payload)
-        return user
-    except IntegrityError:
-        raise HTTPException(status_code=409, detail="用户名或邮箱已存在")
 
 
 

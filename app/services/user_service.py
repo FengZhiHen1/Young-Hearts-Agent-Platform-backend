@@ -2,30 +2,27 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
 from app.models.user import User
-from app.schemas.user import UserCreate
 
 
-def create_user(db: Session, user_in: UserCreate):
-    # import here to avoid circular import at module import time
+def create_user(db: Session, user_in):
+    """
+    创建用户，roles 支持多角色，兼容 UserRegisterRequest。
+    """
     from app.services.auth import get_password_hash
-
+    from app.models.user import User
+    import json
     user = User(
         username=user_in.username,
-        email=user_in.email,
-        gender=user_in.gender or "hidden",
+        email=getattr(user_in, "email", None),
+        gender=getattr(user_in, "gender", "hidden"),
         password_hash=get_password_hash(user_in.password),
-        nickname=user_in.nickname,
-        avatar=user_in.avatar,
-        roles=str(user_in.roles) if user_in.roles else '[]',
-        status=user_in.status or "active",
+        nickname=getattr(user_in, "nickname", None),
+        avatar=getattr(user_in, "avatar", None),
+        roles=json.dumps(user_in.roles) if hasattr(user_in, "roles") else '[]',
+        status=getattr(user_in, "status", "active"),
     )
     db.add(user)
-    try:
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        raise
-    db.refresh(user)
+    db.flush()  # 不提交，便于后续 profile 关联
     return user
 
 
