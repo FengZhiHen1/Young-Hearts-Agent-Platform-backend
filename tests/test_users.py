@@ -13,7 +13,9 @@ def register_user(username, password, roles=None):
         "gender": "male",
         "nickname": "Test User",
     }
-    if roles:
+    if roles is not None:
+        # 明确 roles 只允许 List[str]，不做类型兼容
+        assert isinstance(roles, list) and all(isinstance(r, str) for r in roles)
         payload["roles"] = roles
     r = client.post("/users/register", json=payload)
     assert r.status_code == 201, r.text
@@ -77,7 +79,10 @@ def test_role_permission_and_sensitive_field():
     username = f"roleuser_{uuid.uuid4().hex[:8]}"
     password = "testpass123"
     roles = ["user", "expert"]
-    register_user(username, password, roles=roles)
+    resp = register_user(username, password, roles=roles)
+    # 注册返回 roles 必须为 List[str]
+    assert isinstance(resp["roles"], list)
+    assert set(resp["roles"]) == set(roles)
     session_id, headers = login_user(username, password)
     # 访问需要 expert 角色的接口
     r = client.get("/protected/expert", headers=headers)
@@ -111,3 +116,77 @@ def test_register_duplicate():
         "nickname": "Test User",
     })
     assert r.status_code in (400, 409)
+
+# --- 分角色注册功能 Phase 4: 多角色注册与 profile 测试 ---
+import pytest
+
+def test_register_multi_roles_and_profiles():
+    """注册多角色用户，校验 profile 创建与状态"""
+    username = f"multi_{uuid.uuid4().hex[:8]}"
+    password = "testpass123"
+    roles = ["family", "volunteer", "expert"]
+    payload = {
+        "username": username,
+        "password": password,
+        "email": f"{username}@example.com",
+        "gender": "male",
+        "nickname": "多角色用户",
+        "roles": roles,
+        "volunteer_info": {
+            "full_name": "志愿者张三",
+            "phone": "13800000000",
+            "skills": ["陪伴", "心理疏导"],
+            "is_public_visible": True
+        },
+        "expert_info": {
+            "full_name": "专家李四",
+            "title": "心理咨询师",
+            "organization": "XX医院",
+            "qualifications": ["cert1.pdf"],
+            "specialties": ["孤独症干预"],
+            "is_public_visible": False
+        }
+    }
+    r = client.post("/users/register", json=payload)
+    assert r.status_code == 201, r.text
+    data = r.json()
+    assert set(data["roles"]) == set(roles)
+    # 检查 profile 信息
+    assert "volunteer_profile" in data and data["volunteer_profile"]["status"] == "pending"
+    assert "expert_profile" in data and data["expert_profile"]["status"] == "pending"
+
+def test_register_admin_maintainer_forbidden():
+    """注册管理员/维护人员应被拦截"""
+    username = f"admin_{uuid.uuid4().hex[:8]}"
+    password = "testpass123"
+    for role in ["admin", "maintainer"]:
+        payload = {
+            "username": f"{username}_{role}",
+            "password": password,
+            "email": f"{username}_{role}@example.com",
+            "gender": "male",
+            "nickname": "非法角色",
+            "roles": [role]
+        }
+        r = client.post("/users/register", json=payload)
+        assert r.status_code in (400, 403)
+
+def test_profile_required_for_roles():
+    """注册志愿者/专家缺 profile 信息应报错"""
+    username = f"noprofile_{uuid.uuid4().hex[:8]}"
+    password = "testpass123"
+    # 缺 volunteer_info
+    payload = {
+        "username": username,
+        "password": password,
+        "email": f"{username}@example.com",
+        "gender": "male",
+        "nickname": "无profile",
+        "roles": ["volunteer"]
+    }
+    r = client.post("/users/register", json=payload)
+    assert r.status_code in (400, 422)
+    # 缺 expert_info
+    payload["roles"] = ["expert"]
+    r2 = client.post("/users/register", json=payload)
+    assert r2.status_code in (400, 422)
